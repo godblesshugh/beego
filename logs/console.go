@@ -16,7 +16,6 @@ package logs
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"runtime"
 	"time"
@@ -42,22 +41,22 @@ var colors = []brush{
 	newBrush("1;33"), // Warning            yellow
 	newBrush("1;32"), // Notice             green
 	newBrush("1;34"), // Informational      blue
-	newBrush("1;34"), // Debug              blue
+	newBrush("1;44"), // Debug              Background blue
 }
 
 // consoleWriter implements LoggerInterface and writes messages to terminal.
 type consoleWriter struct {
-	lg    *log.Logger
-	Level int  `json:"level"`
-	Color bool `json:"color"`
+	lg       *logWriter
+	Level    int  `json:"level"`
+	Colorful bool `json:"color"` //this filed is useful only when system's terminal supports color
 }
 
 // NewConsole create ConsoleWriter returning as LoggerInterface.
 func NewConsole() Logger {
 	cw := &consoleWriter{
-		lg:    log.New(os.Stdout, "", 0),
-		Level: LevelDebug,
-		Color: true,
+		lg:       newLogWriter(os.Stdout),
+		Level:    LevelDebug,
+		Colorful: runtime.GOOS != "windows",
 	}
 	return cw
 }
@@ -68,7 +67,11 @@ func (c *consoleWriter) Init(jsonConfig string) error {
 	if len(jsonConfig) == 0 {
 		return nil
 	}
-	return json.Unmarshal([]byte(jsonConfig), c)
+	err := json.Unmarshal([]byte(jsonConfig), c)
+	if runtime.GOOS == "windows" {
+		c.Colorful = false
+	}
+	return err
 }
 
 // WriteMsg write message in console.
@@ -76,13 +79,10 @@ func (c *consoleWriter) WriteMsg(when time.Time, msg string, level int) error {
 	if level > c.Level {
 		return nil
 	}
-	msg = formatLogTime(when) + msg
-	if runtime.GOOS == "windows" || !c.Color {
-		c.lg.Println(msg)
-		return nil
+	if c.Colorful {
+		msg = colors[level](msg)
 	}
-	c.lg.Println(colors[level](msg))
-
+	c.lg.println(when, msg)
 	return nil
 }
 
@@ -97,5 +97,5 @@ func (c *consoleWriter) Flush() {
 }
 
 func init() {
-	Register("console", NewConsole)
+	Register(AdapterConsole, NewConsole)
 }

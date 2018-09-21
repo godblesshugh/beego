@@ -42,7 +42,7 @@ func init() {
 	routers = append(routers, testinfo{"/", "/", nil})
 	routers = append(routers, testinfo{"/customer/login", "/customer/login", nil})
 	routers = append(routers, testinfo{"/customer/login", "/customer/login.json", map[string]string{":ext": "json"}})
-	routers = append(routers, testinfo{"/*", "/customer/123", map[string]string{":splat": "customer/123"}})
+	routers = append(routers, testinfo{"/*", "/http://customer/123/", map[string]string{":splat": "http://customer/123/"}})
 	routers = append(routers, testinfo{"/*", "/customer/2009/12/11", map[string]string{":splat": "customer/2009/12/11"}})
 	routers = append(routers, testinfo{"/aa/*/bb", "/aa/2009/bb", map[string]string{":splat": "2009"}})
 	routers = append(routers, testinfo{"/cc/*/dd", "/cc/2009/11/dd", map[string]string{":splat": "2009/11"}})
@@ -94,6 +94,21 @@ func TestTreeRouters(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestStaticPath(t *testing.T) {
+	tr := NewTree()
+	tr.AddRouter("/topic/:id", "wildcard")
+	tr.AddRouter("/topic", "static")
+	ctx := context.NewContext()
+	obj := tr.Match("/topic", ctx)
+	if obj == nil || obj.(string) != "static" {
+		t.Fatal("/topic is  a static route")
+	}
+	obj = tr.Match("/topic/1", ctx)
+	if obj == nil || obj.(string) != "wildcard" {
+		t.Fatal("/topic/1 is a wildcard route")
 	}
 }
 
@@ -218,6 +233,18 @@ func TestAddTree4(t *testing.T) {
 	obj = t4.Match("/12/123/456/create", ctx)
 	if obj == nil || obj.(string) != "astaxie" {
 		t.Fatal("/:info:int/:num/:id/create can't get obj ")
+	}
+}
+
+// Test for issue #1595
+func TestAddTree5(t *testing.T) {
+	tr := NewTree()
+	tr.AddRouter("/v1/shop/:id", "shopdetail")
+	tr.AddRouter("/v1/shop/", "shophome")
+	ctx := context.NewContext()
+	obj := tr.Match("/v1/shop/", ctx)
+	if obj == nil || obj.(string) != "shophome" {
+		t.Fatal("url /v1/shop/ need match router /v1/shop/ ")
 	}
 }
 

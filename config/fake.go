@@ -38,7 +38,7 @@ func (c *fakeConfigContainer) String(key string) string {
 }
 
 func (c *fakeConfigContainer) DefaultString(key string, defaultval string) string {
-	v := c.getData(key)
+	v := c.String(key)
 	if v == "" {
 		return defaultval
 	}
@@ -46,12 +46,16 @@ func (c *fakeConfigContainer) DefaultString(key string, defaultval string) strin
 }
 
 func (c *fakeConfigContainer) Strings(key string) []string {
-	return strings.Split(c.getData(key), ";")
+	v := c.String(key)
+	if v == "" {
+		return nil
+	}
+	return strings.Split(v, ";")
 }
 
 func (c *fakeConfigContainer) DefaultStrings(key string, defaultval []string) []string {
 	v := c.Strings(key)
-	if len(v) == 0 {
+	if v == nil {
 		return defaultval
 	}
 	return v
@@ -122,7 +126,7 @@ func (c *fakeConfigContainer) SaveConfigFile(filename string) error {
 
 var _ Configer = new(fakeConfigContainer)
 
-// NewFakeConfig return a fake Congiger
+// NewFakeConfig return a fake Configer
 func NewFakeConfig() Configer {
 	return &fakeConfigContainer{
 		data: make(map[string]string),

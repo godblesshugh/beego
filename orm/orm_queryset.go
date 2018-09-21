@@ -55,16 +55,17 @@ func ColValue(opt operator, value interface{}) interface{} {
 
 // real query struct
 type querySet struct {
-	mi       *modelInfo
-	cond     *Condition
-	related  []string
-	relDepth int
-	limit    int64
-	offset   int64
-	groups   []string
-	orders   []string
-	distinct bool
-	orm      *orm
+	mi        *modelInfo
+	cond      *Condition
+	related   []string
+	relDepth  int
+	limit     int64
+	offset    int64
+	groups    []string
+	orders    []string
+	distinct  bool
+	forupdate bool
+	orm       *orm
 }
 
 var _ QuerySeter = new(querySet)
@@ -127,6 +128,12 @@ func (o querySet) Distinct() QuerySeter {
 	return &o
 }
 
+// add FOR UPDATE to SELECT
+func (o querySet) ForUpdate() QuerySeter {
+	o.forupdate = true
+	return &o
+}
+
 // set relation model to query together.
 // it will query relation models and assign to parent model.
 func (o querySet) RelatedSel(params ...interface{}) QuerySeter {
@@ -151,6 +158,11 @@ func (o querySet) RelatedSel(params ...interface{}) QuerySeter {
 func (o querySet) SetCond(cond *Condition) QuerySeter {
 	o.cond = cond
 	return &o
+}
+
+// get condition from QuerySeter
+func (o querySet) GetCond() *Condition {
+	return o.cond
 }
 
 // return QuerySeter execution result number
@@ -192,15 +204,17 @@ func (o *querySet) All(container interface{}, cols ...string) (int64, error) {
 // query one row data and map to containers.
 // cols means the columns when querying.
 func (o *querySet) One(container interface{}, cols ...string) error {
+	o.limit = 1
 	num, err := o.orm.alias.DbBaser.ReadBatch(o.orm.db, o, o.mi, o.cond, container, o.orm.alias.TZ, cols)
 	if err != nil {
 		return err
 	}
-	if num > 1 {
-		return ErrMultiRows
-	}
 	if num == 0 {
 		return ErrNoRows
+	}
+
+	if num > 1 {
+		return ErrMultiRows
 	}
 	return nil
 }
